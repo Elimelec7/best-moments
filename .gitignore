@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+moments.db
+.env
+uploads/media/*
+uploads/thumbs/*
+uploads/qrcodes/*
+*.zip
