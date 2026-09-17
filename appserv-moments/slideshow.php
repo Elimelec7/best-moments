@@ -162,14 +162,102 @@
       0%, 100% { box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7), 0 0 15px rgba(255, 51, 102, 0.3); }
       50% { box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7), 0 0 30px rgba(139, 92, 246, 0.55); }
     }
+    /* Reproductor y Ecualizador de Música Ambiental */
+    .music-badge-player {
+      position: fixed;
+      top: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(11, 15, 25, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 30px;
+      padding: 8px 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
+      z-index: 100;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      user-select: none;
+    }
+    .music-badge-player:hover {
+      background: rgba(18, 24, 40, 0.95);
+      border-color: #ff3366;
+    }
+    .equalizer-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 16px;
+    }
+    .eq-bar {
+      width: 3px;
+      background: #ff3366;
+      border-radius: 2px;
+      animation: eqBounce 1.2s infinite ease-in-out;
+    }
+    .eq-bar:nth-child(1) { height: 10px; animation-delay: 0.1s; }
+    .eq-bar:nth-child(2) { height: 16px; animation-delay: 0.3s; }
+    .eq-bar:nth-child(3) { height: 8px; animation-delay: 0.5s; }
+    .eq-bar:nth-child(4) { height: 14px; animation-delay: 0.2s; }
+
+    .equalizer-bars.paused .eq-bar {
+      animation-play-state: paused;
+      height: 4px;
+    }
+    @keyframes eqBounce {
+      0%, 100% { height: 4px; }
+      50% { height: 16px; }
+    }
+    .music-prompt-banner {
+      position: fixed;
+      top: 72px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, rgba(255, 51, 102, 0.95), rgba(139, 92, 246, 0.95));
+      color: #fff;
+      padding: 8px 22px;
+      border-radius: 24px;
+      font-size: 0.88rem;
+      font-weight: 800;
+      cursor: pointer;
+      z-index: 150;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+      backdrop-filter: blur(8px);
+      animation: pulseGlow 2.5s infinite;
+      transition: all 0.25s ease;
+    }
+    .music-prompt-banner:hover {
+      transform: translateX(-50%) scale(1.05);
+    }
   </style>
 </head>
 <body>
   <div id="ambientBackdrop"></div>
 
   <div class="event-top-bar">
-    <span style="font-size: 1.3rem;">✨</span>
+    <span id="themeEmoji" style="font-size: 1.3rem;">✨</span>
     <span class="event-top-title" id="eventTitle">Experience your best moments with us!</span>
+  </div>
+
+  <!-- Reproductor Flotante de Música Ambiental acorde a la Temática -->
+  <div class="music-badge-player" id="musicPlayerBadge" onclick="toggleMusic()" title="Clic para reproducir/pausar música">
+    <div class="equalizer-bars paused" id="eqBars">
+      <div class="eq-bar"></div>
+      <div class="eq-bar"></div>
+      <div class="eq-bar"></div>
+      <div class="eq-bar"></div>
+    </div>
+    <span id="musicTrackLabel" style="font-size: 0.88rem; font-weight: 700; color: #fff;">
+      🎵 Música Ambiental
+    </span>
+  </div>
+
+  <!-- Notificación para iniciar audio con interacción del usuario si el navegador lo bloquea -->
+  <div class="music-prompt-banner" id="musicPromptBanner" onclick="startAudioExplicit()">
+    🎶 Toca aquí para activar la música de fondo en vivo
   </div>
   
   <div class="controls-top-right">
@@ -209,7 +297,189 @@
     let currentIndex = -1;
     let timer = null;
     let isPaused = false;
+    let currentEventTheme = 'celebration';
     const SLIDE_INTERVAL = 6000; // 6 segundos
+
+    // ========================================================
+    // Motor de Música de Fondo Acorde a la Temática del Evento
+    // ========================================================
+    class EventThemeAudioEngine {
+      constructor() {
+        this.ctx = null;
+        this.isPlaying = false;
+        this.theme = 'celebration';
+        this.timer = null;
+        this.step = 0;
+      }
+
+      initContext() {
+        if (!this.ctx) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (AudioContextClass) {
+            this.ctx = new AudioContextClass();
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      start(theme = 'celebration') {
+        this.theme = theme;
+        this.initContext();
+        if (this.isPlaying) return;
+        this.isPlaying = true;
+
+        const banner = document.getElementById("musicPromptBanner");
+        if (banner) banner.style.display = "none";
+
+        const eq = document.getElementById("eqBars");
+        if (eq) eq.classList.remove("paused");
+
+        const label = document.getElementById("musicTrackLabel");
+        if (label) label.textContent = `🎵 ${getThemeMusicTitle(this.theme)}`;
+
+        this.scheduleMelodyLoop();
+      }
+
+      stop() {
+        this.isPlaying = false;
+        if (this.timer) {
+          clearTimeout(this.timer);
+          this.timer = null;
+        }
+        const eq = document.getElementById("eqBars");
+        if (eq) eq.classList.add("paused");
+        const label = document.getElementById("musicTrackLabel");
+        if (label) label.textContent = "🔇 Música Pausada";
+      }
+
+      toggle(theme) {
+        if (this.isPlaying) {
+          this.stop();
+        } else {
+          this.start(theme || this.theme);
+        }
+      }
+
+      scheduleMelodyLoop() {
+        if (!this.isPlaying || !this.ctx) return;
+
+        // Acordes y armónicos musicales según la temática seleccionada
+        const themeHarmonies = {
+          // Boda: Melodía romántica y dulce en Do Mayor (Canon en Do con campanas celestiales)
+          wedding: {
+            chords: [
+              [261.63, 329.63, 392.00, 523.25], // C (Do mayor)
+              [196.00, 246.94, 293.66, 392.00], // G (Sol mayor)
+              [220.00, 261.63, 329.63, 440.00], // Am (La menor)
+              [174.61, 220.00, 261.63, 349.23]  // F (Fa mayor)
+            ],
+            stepTime: 3800,
+            oscType: 'sine',
+            filterFreq: 950
+          },
+          // Cumpleaños: Acordes alegres, vivaces y brillantes estilo celebración
+          birthday: {
+            chords: [
+              [261.63, 329.63, 392.00, 659.25], // C alegre con sexta
+              [174.61, 220.00, 261.63, 349.23], // F
+              [196.00, 246.94, 293.66, 392.00], // G
+              [261.63, 329.63, 392.00, 523.25]  // C
+            ],
+            stepTime: 2800,
+            oscType: 'triangle',
+            filterFreq: 1400
+          },
+          // Fiesta / Celebración: Vibrante, cálida y festiva
+          celebration: {
+            chords: [
+              [174.61, 220.00, 261.63, 349.23], // F
+              [196.00, 246.94, 293.66, 392.00], // G
+              [164.81, 196.00, 246.94, 329.63], // Em
+              [220.00, 261.63, 329.63, 440.00]  // Am
+            ],
+            stepTime: 3000,
+            oscType: 'sine',
+            filterFreq: 1200
+          },
+          // Noche Elegante: Armónicos jazz lounge suaves y sofisticados
+          elegant: {
+            chords: [
+              [146.83, 220.00, 261.63, 349.23], // Dm7
+              [196.00, 246.94, 293.66, 349.23], // G7
+              [130.81, 196.00, 246.94, 329.63], // Cmaj7
+              [220.00, 261.63, 329.63, 392.00]  // Am7
+            ],
+            stepTime: 3600,
+            oscType: 'triangle',
+            filterFreq: 850
+          }
+        };
+
+        const config = themeHarmonies[this.theme] || themeHarmonies.celebration;
+        const currentChord = config.chords[this.step % config.chords.length];
+        this.step++;
+
+        const now = this.ctx.currentTime;
+        const duration = (config.stepTime / 1000) * 1.15;
+
+        // Tocar cada nota en arpegio suave con envolvente
+        currentChord.forEach((freq, i) => {
+          const noteTime = now + (i * 0.16);
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          const filter = this.ctx.createBiquadFilter();
+
+          osc.type = config.oscType;
+          osc.frequency.setValueAtTime(freq, noteTime);
+
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(config.filterFreq, noteTime);
+
+          gain.gain.setValueAtTime(0.0001, noteTime);
+          gain.gain.exponentialRampToValueAtTime(0.042, noteTime + 0.08);
+          gain.gain.exponentialRampToValueAtTime(0.0001, noteTime + duration);
+
+          osc.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start(noteTime);
+          osc.stop(noteTime + duration + 0.1);
+        });
+
+        this.timer = setTimeout(() => {
+          if (this.isPlaying) this.scheduleMelodyLoop();
+        }, config.stepTime);
+      }
+    }
+
+    const musicEngine = new EventThemeAudioEngine();
+
+    function startAudioExplicit() {
+      musicEngine.start(currentEventTheme);
+    }
+
+    function toggleMusic() {
+      musicEngine.toggle(currentEventTheme);
+    }
+
+    function getThemeMusicTitle(theme) {
+      switch(theme) {
+        case 'wedding': return 'Romance Acústico 💍';
+        case 'birthday': return 'Fiesta de Cumpleaños 🎂';
+        case 'elegant': return 'Lounge & Smooth Piano ✨';
+        default: return 'Alegría & Fiesta Pop 🎉';
+      }
+    }
+
+    // Activar audio automáticamente en la primera interacción de usuario
+    window.addEventListener("click", () => {
+      if (!musicEngine.isPlaying) {
+        musicEngine.start(currentEventTheme);
+      }
+    }, { once: true });
 
     async function loadData() {
       if (!eventCode) return;
@@ -218,8 +488,21 @@
         if (!res.ok) return;
         const data = await res.json();
         
+        const theme = (data.event && data.event.theme) ? data.event.theme : 'celebration';
+        currentEventTheme = theme;
+
         document.getElementById("eventTitle").textContent = data.event.title;
         document.getElementById("qrCornerImg").src = data.qr_url;
+
+        const emojiEl = document.getElementById("themeEmoji");
+        if (emojiEl) {
+          emojiEl.textContent = theme === 'wedding' ? '💍' : (theme === 'birthday' ? '🎂' : (theme === 'elegant' ? '✨' : '🎉'));
+        }
+
+        if (!musicEngine.isPlaying) {
+          const trackLabel = document.getElementById("musicTrackLabel");
+          if (trackLabel) trackLabel.textContent = `🎵 ${getThemeMusicTitle(theme)}`;
+        }
 
         const newMedia = data.media || [];
         if (newMedia.length !== mediaList.length) {
@@ -277,6 +560,9 @@
     }
 
     function toggleFullscreen() {
+      if (!musicEngine.isPlaying) {
+        musicEngine.start(currentEventTheme);
+      }
       if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().catch(() => {});
       } else {

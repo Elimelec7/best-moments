@@ -87,14 +87,15 @@ function initHomePage() {
           resultCard.style.display = "block";
           
           setEventPin(adminPin, data.event.code);
+          localStorage.setItem("moments_host_" + data.event.code, "true");
 
           document.getElementById("createdEventTitle").textContent = data.event.title;
           document.getElementById("createdEventQrImg").src = data.qr_url;
           document.getElementById("createdEventUrlInput").value = data.target_url;
           
           document.getElementById("btnOpenEvent").href = `/e/${data.event.code}?pin=${encodeURIComponent(adminPin)}`;
-          document.getElementById("btnPrintPoster").href = `/e/${data.event.code}/poster`;
-          document.getElementById("btnOpenSlideshow").href = `/e/${data.event.code}/slideshow`;
+          document.getElementById("btnPrintPoster").href = `/e/${data.event.code}/poster?pin=${encodeURIComponent(adminPin)}`;
+          document.getElementById("btnOpenSlideshow").href = `/e/${data.event.code}/slideshow?pin=${encodeURIComponent(adminPin)}`;
 
           resultCard.scrollIntoView({ behavior: "smooth" });
           loadRecentEvents();
@@ -245,14 +246,17 @@ async function initEventPage() {
 
   updateGuestBadge();
 
-  // Escuchar inputs de archivos
-  const cameraInput = document.getElementById("cameraInput");
+  // Escuchar inputs de archivos (Foto directa, Video directo, Galería)
+  const photoInput = document.getElementById("cameraPhotoInput");
+  const videoInput = document.getElementById("cameraVideoInput");
   const galleryInput = document.getElementById("galleryInput");
 
-  if (cameraInput) {
-    cameraInput.addEventListener("change", (e) => handleFilesSelected(e.target.files));
+  if (photoInput) {
+    photoInput.addEventListener("change", (e) => handleFilesSelected(e.target.files));
   }
-
+  if (videoInput) {
+    videoInput.addEventListener("change", (e) => handleFilesSelected(e.target.files));
+  }
   if (galleryInput) {
     galleryInput.addEventListener("change", (e) => handleFilesSelected(e.target.files));
   }
@@ -358,10 +362,31 @@ async function loadEventDataSilently() {
   } catch (err) {}
 }
 
+const themeConfigs = {
+  wedding: { seal: '💍', badge: '💍 Boda de Ensueño', class: 'theme-wedding' },
+  birthday: { seal: '🎂', badge: '🎂 ¡Feliz Cumpleaños!', class: 'theme-birthday' },
+  celebration: { seal: '🎉', badge: '🎉 Gran Celebración', class: 'theme-celebration' },
+  elegant: { seal: '✨', badge: '✨ Gala & Aniversario', class: 'theme-elegant' }
+};
+
 function renderEventHeader(event) {
+  const themeKey = event.theme || 'celebration';
+  const themeCfg = themeConfigs[themeKey] || themeConfigs.celebration;
+
+  const card = document.getElementById("eventProfileCard");
+  if (card) card.className = "event-profile-card " + themeCfg.class;
+
+  const seal = document.getElementById("profileAvatarSeal");
+  if (seal) seal.textContent = themeCfg.seal;
+
+  const pill = document.getElementById("eventPillBadge");
+  if (pill) pill.textContent = themeCfg.badge;
+
   const titleEl = document.getElementById("eventTitleText");
   const dateEl = document.getElementById("eventDateText");
   const locEl = document.getElementById("eventLocationText");
+  const countEl = document.getElementById("eventHeaderCount");
+  const descWrapper = document.getElementById("eventDescriptionWrapper");
   const descEl = document.getElementById("eventDescriptionText");
   const posterLink = document.getElementById("linkPoster");
   const slideshowLink = document.getElementById("linkSlideshow");
@@ -369,14 +394,59 @@ function renderEventHeader(event) {
   if (titleEl) titleEl.textContent = event.title;
   if (dateEl) dateEl.innerHTML = event.event_date ? `📅 ${escapeHtml(event.event_date)}` : '';
   if (locEl) locEl.innerHTML = event.location ? `📍 ${escapeHtml(event.location)}` : '';
-  if (descEl && event.description) {
-    descEl.textContent = event.description;
-    descEl.style.display = "block";
+  if (countEl) countEl.textContent = `📸 ${currentMediaList.length} recuerdos`;
+
+  if (descWrapper && descEl) {
+    if (event.description && event.description.trim()) {
+      descEl.textContent = `“${event.description}”`;
+      descWrapper.style.display = "block";
+    } else {
+      descWrapper.style.display = "none";
+    }
   }
 
   const pinParam = encodeURIComponent(getEventPin());
   if (posterLink) posterLink.href = `/e/${event.code}/poster?pin=${pinParam}`;
   if (slideshowLink) slideshowLink.href = `/e/${event.code}/slideshow?pin=${pinParam}`;
+
+  // Control de visibilidad del botón Cartel QR: Solo visible para el anfitrión creador
+  updateHostVisibility();
+}
+
+function updateHostVisibility() {
+  const isHost = localStorage.getItem("moments_host_" + currentEventCode) === "true";
+  const hostSpan = document.getElementById("hostActions");
+  const hostClaim = document.getElementById("hostClaimSection");
+  if (hostSpan) {
+    hostSpan.style.display = isHost ? "inline-block" : "none";
+  }
+  if (hostClaim) {
+    hostClaim.style.display = isHost ? "none" : "block";
+  }
+}
+
+function claimHostRole() {
+  const currentPin = getEventPin();
+  const entered = prompt("Ingresa el PIN de anfitrión para activar las herramientas de administración en este dispositivo:", currentPin || "");
+  if (!entered) return;
+
+  fetch(`/api/events/${encodeURIComponent(currentEventCode)}/verify-pin`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pin: entered.trim() })
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.valid) {
+        localStorage.setItem("moments_host_" + currentEventCode, "true");
+        setEventPin(entered.trim());
+        updateHostVisibility();
+        alert("✨ ¡Modo Anfitrión activado! El botón Cartel QR Mesas ya está disponible.");
+      } else {
+        alert("❌ PIN incorrecto.");
+      }
+    })
+    .catch(() => alert("Error de conexión al verificar el PIN."));
 }
 
 function setFilter(filter) {
@@ -495,9 +565,11 @@ async function handleFilesSelected(fileList) {
     if (progressBar) progressBar.style.width = "0%";
   }, 2200);
 
-  const cameraInput = document.getElementById("cameraInput");
+  const photoInput = document.getElementById("cameraPhotoInput");
+  const videoInput = document.getElementById("cameraVideoInput");
   const galleryInput = document.getElementById("galleryInput");
-  if (cameraInput) cameraInput.value = "";
+  if (photoInput) photoInput.value = "";
+  if (videoInput) videoInput.value = "";
   if (galleryInput) galleryInput.value = "";
 
   await loadEventData();

@@ -191,14 +191,18 @@
         if (res.ok && data.success) {
           form.style.display = "none";
           resultCard.style.display = "block";
+
+          // Marcar al usuario creador como anfitrión oficial del evento en este dispositivo
+          localStorage.setItem('moments_host_' + data.event.code, 'true');
+          localStorage.setItem('moments_pin_' + data.event.code, payload.admin_pin);
           
           document.getElementById("createdEventTitle").textContent = data.event.title;
           document.getElementById("createdEventQrImg").src = data.qr_url;
           document.getElementById("createdEventUrlInput").value = data.target_url;
           
-          document.getElementById("btnOpenEvent").href = `event.php?code=${data.event.code}`;
-          document.getElementById("btnPrintPoster").href = `poster.php?code=${data.event.code}`;
-          document.getElementById("btnOpenSlideshow").href = `slideshow.php?code=${data.event.code}`;
+          document.getElementById("btnOpenEvent").href = `event.php?code=${data.event.code}&pin=${encodeURIComponent(payload.admin_pin)}`;
+          document.getElementById("btnPrintPoster").href = `poster.php?code=${data.event.code}&pin=${encodeURIComponent(payload.admin_pin)}`;
+          document.getElementById("btnOpenSlideshow").href = `slideshow.php?code=${data.event.code}&pin=${encodeURIComponent(payload.admin_pin)}`;
 
           resultCard.scrollIntoView({ behavior: "smooth" });
           loadRecentEvents();
