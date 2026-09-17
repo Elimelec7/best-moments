@@ -178,9 +178,10 @@ async def get_event_details(
     code: str,
     request: Request,
     pin: Optional[str] = None,
+    mode: Optional[str] = None,
     db: AsyncSession = Depends(get_db)
 ):
-    """Obtiene los detalles del evento y todas sus fotos y videos (requiere PIN válido)."""
+    """Obtiene los detalles del evento y todas sus fotos y videos (requiere PIN válido, salvo en modo proyector/slideshow)."""
     event = await db.scalar(select(Event).where(Event.code == code))
     if not event:
         raise HTTPException(status_code=404, detail="Evento no encontrado.")
@@ -194,9 +195,11 @@ async def get_event_details(
 
     qr_url = storage.generate_event_qr(code, target_url)
 
-    # Validar PIN
+    is_slideshow = (mode == "slideshow")
+
+    # Validar PIN salvo en modo proyector en vivo
     clean_pin = (pin or "").strip()
-    if clean_pin != event.admin_pin:
+    if not is_slideshow and clean_pin != event.admin_pin:
         return {
             "locked": True,
             "event": {

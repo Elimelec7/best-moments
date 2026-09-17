@@ -136,10 +136,11 @@ if ($action === 'create_event') {
     exit;
 }
 
-// 3. OBTENER DETALLE DE EVENTO Y SUS MEDIOS (PROTEGIDO POR PIN)
-if ($action === 'get_event') {
+// 3. OBTENER DETALLE DE EVENTO Y SUS MEDIOS (PROTEGIDO POR PIN / O MODO SLIDESHOW EN VIVO)
+if ($action === 'get_event' || $action === 'get_slideshow') {
     $code = $_GET['code'] ?? '';
     $pin = trim($_GET['pin'] ?? $_POST['pin'] ?? '');
+    $isSlideshow = ($action === 'get_slideshow') || (isset($_GET['mode']) && $_GET['mode'] === 'slideshow') || isset($_GET['is_slideshow']);
 
     $stmt = $pdo->prepare("SELECT * FROM events WHERE code = ?");
     $stmt->execute([$code]);
@@ -162,8 +163,8 @@ if ($action === 'get_event') {
         $qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=" . urlencode($targetUrl);
     }
 
-    // Comprobar si el PIN ingresado es correcto
-    if ($pin !== $event['admin_pin']) {
+    // Comprobar si el PIN ingresado es correcto (La pantalla TV/Slideshow siempre muestra recuerdos en vivo)
+    if (!$isSlideshow && $pin !== $event['admin_pin']) {
         echo json_encode([
             'locked' => true,
             'event' => [
@@ -182,7 +183,7 @@ if ($action === 'get_event') {
         exit;
     }
 
-    // Si el PIN coincide: entregar todos los recuerdos
+    // Si coincide el PIN o es el modo proyector en vivo: entregar todos los recuerdos
     $stmtMedia = $pdo->prepare("SELECT * FROM media WHERE event_id = ? ORDER BY created_at DESC");
     $stmtMedia->execute([$event['id']]);
     $media = $stmtMedia->fetchAll();
