@@ -3,126 +3,166 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Álbum del Evento - Moments Drive</title>
+  <title>Experience your best moments with us! - Álbum del Evento</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
   <div class="container">
-    <!-- Barra Superior -->
-    <header class="header" style="margin-bottom: 12px; padding-bottom: 10px;">
-      <a href="index.php" class="logo" style="font-size: 1.1rem;">
-        <span class="logo-icon">📸</span> Moments Drive
+    <!-- Barra Superior de Marca -->
+    <header class="header">
+      <a href="index.php" class="brand-wrapper">
+        <div class="brand-icon" style="width: 38px; height: 38px; font-size: 1.2rem;">✨</div>
+        <div class="brand-text">
+          <span class="brand-title" style="font-size: 1rem;">Experience your best moments with us!</span>
+          <span class="brand-slogan">Álbum Compartido en Vivo</span>
+        </div>
       </a>
+      
       <!-- Identidad del Invitado -->
-      <div class="guest-badge" onclick="promptGuestName(true)">
+      <div class="guest-pill" onclick="promptGuestName(true)">
         <span>👤</span>
-        <span id="guestNameDisplay">Tu Nombre</span>
+        <span id="guestNameDisplay">Mi Nombre</span>
+        <span style="font-size: 0.7rem; opacity: 0.8;">✏️</span>
       </div>
     </header>
 
-    <!-- Encabezado del Evento -->
-    <section class="event-hero">
-      <h1 class="event-title" id="eventTitleText">Cargando celebración...</h1>
-      <div class="event-meta">
-        <span id="eventDateText"></span>
-        <span id="eventLocationText"></span>
-      </div>
-      <p id="eventDescriptionText" style="display:none; color:#cbd5e1; font-size:0.95rem; max-width:600px; margin:0 auto 12px;"></p>
-      
-      <!-- Enlaces rápidos para el organizador -->
-      <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
-        <a id="linkPoster" href="#" target="_blank" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.8rem;">
-          🖨️ Cartel QR
-        </a>
-        <a id="linkSlideshow" href="#" target="_blank" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.8rem;">
-          📺 Pantalla en Vivo
-        </a>
-        <button onclick="downloadAllZip()" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.8rem;">
-          📦 Descargar ZIP
+    <!-- Tarjeta de Bloqueo por PIN de Seguridad (Si se ingresa sin PIN o sin QR) -->
+    <div class="glass-card" id="pinGateCard" style="display: none; text-align: center; max-width: 480px; margin: 30px auto 40px; padding: 40px 24px; border-color: var(--primary);">
+      <div style="font-size: 3.2rem; margin-bottom: 12px;">🔒</div>
+      <h2 style="font-size: 1.8rem; font-weight: 900; color: #fff; margin-bottom: 8px;">Álbum Protegido</h2>
+      <p id="pinGateTitle" style="color: var(--primary); font-size: 1.2rem; font-weight: 800; margin-bottom: 12px;"></p>
+      <p style="color: #cbd5e1; font-size: 0.95rem; margin-bottom: 24px; line-height: 1.5;">
+        Esta celebración es privada. Si estás en la fiesta, <strong>escanea el código QR</strong> de tu mesa para entrar directo, o escribe el <strong>PIN de anfitrión</strong> proporcionado.
+      </p>
+      <form id="pinUnlockForm" onsubmit="handlePinSubmit(event)">
+        <div class="form-group" style="margin-bottom: 16px;">
+          <input type="password" id="inputPinUnlock" class="form-input" placeholder="PIN de 4 dígitos" maxlength="12" style="text-align: center; font-size: 1.4rem; letter-spacing: 6px; font-weight: 800;" required autofocus>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block btn-lg" id="btnUnlockSubmit">
+          🔓 Desbloquear Álbum
         </button>
+      </form>
+      <div id="pinErrorAlert" style="display: none; color: #f87171; font-weight: 700; margin-top: 14px; background: rgba(239, 68, 68, 0.15); padding: 10px; border-radius: 8px;">
+        ❌ PIN incorrecto. Por favor verifícalo con el anfitrión.
       </div>
-    </section>
-
-    <!-- Botones Principales de Captura y Subida -->
-    <div class="action-buttons-grid">
-      <!-- Botón 1: Cámara en Vivo -->
-      <label for="cameraInput" class="btn-camera" style="cursor: pointer;">
-        <span class="icon">📸</span>
-        <span>Tomar Foto / Video</span>
-        <span style="font-size: 0.75rem; opacity: 0.9; font-weight: normal;">Abre la cámara al instante</span>
-      </label>
-      <input type="file" id="cameraInput" accept="image/*,video/*" capture="environment" style="display: none;">
-
-      <!-- Botón 2: Galería de Fotos -->
-      <label for="galleryInput" class="btn-gallery" style="cursor: pointer;">
-        <span class="icon">🖼️</span>
-        <span>Subir de Galería</span>
-        <span style="font-size: 0.75rem; opacity: 0.9; font-weight: normal;">Elige varias fotos del cel</span>
-      </label>
-      <input type="file" id="galleryInput" accept="image/*,video/*" multiple style="display: none;">
-    </div>
-
-    <!-- Indicador de Progreso de Subida -->
-    <div class="upload-progress-container" id="uploadProgressCard">
-      <div class="upload-progress-header">
-        <span id="uploadProgressStatus">Subiendo recuerdo...</span>
-        <span id="uploadProgressPercent">0%</span>
-      </div>
-      <div class="progress-bar-outer">
-        <div class="progress-bar-inner" id="uploadProgressBar"></div>
+      <div style="margin-top: 24px;">
+        <a href="index.php" style="color: #94a3b8; font-size: 0.88rem; text-decoration: underline;">← Volver al Inicio</a>
       </div>
     </div>
 
-    <!-- Barra de Herramientas y Filtros -->
-    <div class="tools-bar">
-      <div class="filter-tabs">
-        <button class="tab-btn active" data-filter="all" onclick="setFilter('all')">Todos</button>
-        <button class="tab-btn" data-filter="image" onclick="setFilter('image')">Fotos</button>
-        <button class="tab-btn" data-filter="video" onclick="setFilter('video')">Videos</button>
-      </div>
-      <div id="mediaCountText" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">
-        0 recuerdos compartidos
-      </div>
-    </div>
+    <!-- Contenido Protegido del Álbum (Visible solo con PIN válido o por QR) -->
+    <div id="eventMainContent" style="display: none;">
+      <!-- Banner Central del Evento -->
+      <section class="glass-card" style="text-align: center; padding: 26px 18px; margin-bottom: 22px;">
+        <span class="hero-pill" id="eventPillBadge">🎉 Celebración en Vivo</span>
+        <h1 class="card-title" id="eventTitleText" style="font-size: 2rem; justify-content: center; margin-bottom: 8px;">
+          Cargando evento...
+        </h1>
+        <div style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; color: #94a3b8; font-size: 0.9rem; margin-bottom: 12px;">
+          <span id="eventDateText"></span>
+          <span id="eventLocationText"></span>
+        </div>
+        <p id="eventDescriptionText" style="display: none; color: #cbd5e1; font-size: 0.98rem; max-width: 620px; margin: 0 auto 16px; line-height: 1.5;"></p>
+        
+        <!-- Enlaces Rápidos del Anfitrión -->
+        <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-top: 14px;">
+          <a id="linkPoster" href="#" target="_blank" class="btn btn-secondary" style="padding: 8px 14px; font-size: 0.82rem;">
+            🖨️ Cartel QR Mesas
+          </a>
+          <a id="linkSlideshow" href="#" target="_blank" class="btn btn-secondary" style="padding: 8px 14px; font-size: 0.82rem;">
+            📺 Pantalla / TV en Vivo
+          </a>
+          <button onclick="downloadAllZip()" class="btn btn-outline" style="padding: 8px 14px; font-size: 0.82rem;">
+            📦 Descargar Todo (ZIP)
+          </button>
+        </div>
+      </section>
 
-    <!-- Galería en Vivo -->
-    <div class="gallery-grid" id="galleryGrid"></div>
+      <!-- Botones de Acción Gráficos Gigantes (Cámara y Galería) -->
+      <div class="action-cards-grid">
+        <!-- Botón 1: Cámara en Vivo -->
+        <label for="cameraInput" class="action-card action-camera">
+          <span class="card-icon">📸</span>
+          <span class="card-main-text">Tomar Foto / Video</span>
+          <span class="card-sub-text">Abre la cámara al instante</span>
+        </label>
+        <input type="file" id="cameraInput" accept="image/*,video/*" capture="environment" style="display: none;">
 
-    <!-- Estado Vacío -->
-    <div class="empty-gallery" id="emptyGalleryState" style="display: none;">
-      <span class="empty-icon">📷✨</span>
-      <h3 style="font-size: 1.2rem; color: #fff; margin-bottom: 6px;">Sé el primero en compartir</h3>
-      <p style="font-size: 0.95rem; margin-bottom: 18px;">Usa los botones de arriba para capturar y compartir los mejores momentos de la fiesta.</p>
+        <!-- Botón 2: Galería del Celular -->
+        <label for="galleryInput" class="action-card action-gallery">
+          <span class="card-icon">🖼️</span>
+          <span class="card-main-text">Subir de Galería</span>
+          <span class="card-sub-text">Selecciona varias fotos</span>
+        </label>
+        <input type="file" id="galleryInput" accept="image/*,video/*" multiple style="display: none;">
+      </div>
+
+      <!-- Barra de Progreso Dinámica durante la subida -->
+      <div class="upload-progress-container" id="uploadProgressCard">
+        <div style="display: flex; justify-content: space-between; font-weight: 700; font-size: 0.95rem;">
+          <span id="uploadProgressStatus">Subiendo recuerdo...</span>
+          <span id="uploadProgressPercent" style="color: var(--primary);">0%</span>
+        </div>
+        <div class="progress-bar-outer">
+          <div class="progress-bar-inner" id="uploadProgressBar"></div>
+        </div>
+      </div>
+
+      <!-- Barra de Filtros y Contador de Recuerdos -->
+      <div class="stats-bar">
+        <div class="filter-pills">
+          <button class="filter-btn active" data-filter="all" onclick="setFilter('all')">Todos</button>
+          <button class="filter-btn" data-filter="image" onclick="setFilter('image')">Fotos</button>
+          <button class="filter-btn" data-filter="video" onclick="setFilter('video')">Videos</button>
+        </div>
+        <div id="mediaCountText" style="font-size: 0.88rem; color: #cbd5e1; font-weight: 700;">
+          0 recuerdos compartidos
+        </div>
+      </div>
+
+      <!-- Cuadrícula Dinámica de la Galería -->
+      <div class="gallery-grid" id="galleryGrid"></div>
+
+      <!-- Estado Vacío Invitador -->
+      <div class="glass-card" id="emptyGalleryState" style="display: none; text-align: center; padding: 48px 20px;">
+        <div style="font-size: 3.5rem; margin-bottom: 12px;">📷 ✨</div>
+        <h3 style="font-size: 1.3rem; color: #fff; font-weight: 800; margin-bottom: 8px;">
+          ¡Sé el primero en compartir un momento!
+        </h3>
+        <p style="color: #94a3b8; max-width: 480px; margin: 0 auto 20px; font-size: 0.95rem;">
+          Toca los botones superiores para activar tu cámara o subir fotos desde tu celular. ¡Todos los invitados podrán verlos en vivo!
+        </p>
+      </div>
     </div>
   </div>
 
-  <!-- Visor Lightbox a Pantalla Completa -->
+  <!-- Visor Lightbox Pantalla Completa -->
   <div class="modal-overlay" id="lightboxModal" onclick="closeLightbox()">
     <div class="lightbox-content" onclick="event.stopPropagation()">
       <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
       <div id="lightboxMediaContainer"></div>
       
       <div class="lightbox-controls">
-        <span id="lightboxUploader" style="font-size: 0.9rem; font-weight: 600;"></span>
+        <span id="lightboxUploader" style="font-size: 0.92rem; font-weight: 700; color: #f8fafc;"></span>
         <div style="display: flex; gap: 8px;">
-          <a id="lightboxDownloadBtn" href="#" download class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85rem;">
+          <a id="lightboxDownloadBtn" href="#" download class="btn btn-secondary" style="padding: 7px 14px; font-size: 0.84rem;">
             ⬇️ Guardar
           </a>
-          <button onclick="deleteCurrentLightboxMedia()" class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem;" title="Eliminar (requiere PIN)">
+          <button onclick="deleteCurrentLightboxMedia()" class="btn btn-danger" style="padding: 7px 14px; font-size: 0.84rem;" title="Eliminar (requiere PIN)">
             🗑️
           </button>
         </div>
       </div>
 
-      <div style="display: flex; justify-content: space-between; width: 100%; margin-top: 10px;">
-        <button class="btn btn-secondary" onclick="prevLightbox()" style="padding: 8px 16px;">◀ Anterior</button>
-        <button class="btn btn-secondary" onclick="nextLightbox()" style="padding: 8px 16px;">Siguiente ▶</button>
+      <div style="display: flex; justify-content: space-between; width: 100%; margin-top: 14px;">
+        <button class="btn btn-secondary" onclick="prevLightbox()" style="padding: 10px 18px;">◀ Anterior</button>
+        <button class="btn btn-secondary" onclick="nextLightbox()" style="padding: 10px 18px;">Siguiente ▶</button>
       </div>
     </div>
   </div>
 
-  <!-- Barra de Acciones Flotante Inferior en Móvil -->
-  <div class="mobile-bottom-bar">
+  <!-- Barra Flotante Inferior en Pantallas Móviles -->
+  <div class="mobile-bottom-bar" id="mobileBottomBar" style="display: none;">
     <label for="cameraInput" class="bottom-action-btn" style="cursor: pointer;">
       <span class="btn-icon">📸</span>
       <span>Cámara</span>
@@ -144,6 +184,20 @@
   <script>
     const urlParams = new URLSearchParams(window.location.search);
     const eventCode = urlParams.get('code') || '';
+    
+    // Si viene en el enlace (típico al escanear el Código QR), guardar en memoria del celular
+    const urlPin = urlParams.get('pin');
+    if (urlPin) {
+      localStorage.setItem('moments_pin_' + eventCode, urlPin.trim());
+    }
+
+    function getEventPin() {
+      return localStorage.getItem('moments_pin_' + eventCode) || '';
+    }
+
+    function setEventPin(pin) {
+      if (pin) localStorage.setItem('moments_pin_' + eventCode, pin.trim());
+    }
 
     let currentMediaList = [];
     let currentFilter = "all";
@@ -162,7 +216,7 @@
     function promptGuestName(force = false) {
       let current = getGuestName();
       if (!current || force) {
-        const entered = prompt("¿Cuál es tu nombre? (Para que sepan quién tomó la foto):", current || "");
+        const entered = prompt("¿Cuál es tu nombre? (Para que aparezca en tus fotos):", current || "");
         if (entered && entered.trim()) {
           setGuestName(entered);
           updateGuestBadge();
@@ -175,7 +229,7 @@
     function updateGuestBadge() {
       const badge = document.getElementById("guestNameDisplay");
       if (badge) {
-        badge.textContent = getGuestName() || "Invitado (Clic para cambiar)";
+        badge.textContent = getGuestName() || "Mi Nombre";
       }
     }
 
@@ -186,22 +240,75 @@
         return;
       }
 
+      const pin = getEventPin();
+
       try {
-        const res = await fetch(`api.php?action=get_event&code=${encodeURIComponent(eventCode)}`);
+        const res = await fetch(`api.php?action=get_event&code=${encodeURIComponent(eventCode)}&pin=${encodeURIComponent(pin)}`);
         if (!res.ok) {
-          document.body.innerHTML = `<div class="container" style="text-align:center; padding:50px 20px;">
-            <h2>Evento no encontrado</h2>
-            <p style="color:#94a3b8; margin:16px 0;">El enlace no corresponde a un evento activo.</p>
+          document.body.innerHTML = `<div class="container" style="text-align:center; padding:60px 20px;">
+            <h2 style="font-size:2rem; margin-bottom:12px;">Evento no encontrado</h2>
+            <p style="color:#94a3b8; margin-bottom:20px;">El enlace o código QR no corresponde a una celebración activa.</p>
             <a href="index.php" class="btn btn-primary">Volver al Inicio</a>
           </div>`;
           return;
         }
+
         const data = await res.json();
+
+        // Si el evento está bloqueado por PIN
+        if (data.locked) {
+          document.getElementById("pinGateCard").style.display = "block";
+          document.getElementById("eventMainContent").style.display = "none";
+          document.getElementById("mobileBottomBar").style.display = "none";
+          document.getElementById("pinGateTitle").textContent = data.event.title;
+          return;
+        }
+
+        // Si está desbloqueado
+        document.getElementById("pinGateCard").style.display = "none";
+        document.getElementById("eventMainContent").style.display = "block";
+        document.getElementById("mobileBottomBar").style.display = "flex";
+
         renderEventHeader(data.event);
         currentMediaList = data.media || [];
         renderGallery();
       } catch (err) {
-        console.error("Error:", err);
+        console.error("Error al cargar datos:", err);
+      }
+    }
+
+    async function handlePinSubmit(e) {
+      e.preventDefault();
+      const inputPin = document.getElementById("inputPinUnlock").value.trim();
+      const btn = document.getElementById("btnUnlockSubmit");
+      btn.disabled = true;
+      btn.textContent = "Verificando PIN...";
+
+      setEventPin(inputPin);
+
+      try {
+        const res = await fetch(`api.php?action=get_event&code=${encodeURIComponent(eventCode)}&pin=${encodeURIComponent(inputPin)}`);
+        const data = await res.json();
+        btn.disabled = false;
+        btn.textContent = "🔓 Desbloquear Álbum";
+
+        if (data.locked) {
+          document.getElementById("pinErrorAlert").style.display = "block";
+          document.getElementById("inputPinUnlock").select();
+        } else {
+          document.getElementById("pinErrorAlert").style.display = "none";
+          document.getElementById("pinGateCard").style.display = "none";
+          document.getElementById("eventMainContent").style.display = "block";
+          document.getElementById("mobileBottomBar").style.display = "flex";
+
+          renderEventHeader(data.event);
+          currentMediaList = data.media || [];
+          renderGallery();
+        }
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = "🔓 Desbloquear Álbum";
+        alert("Error de conexión al verificar el PIN.");
       }
     }
 
@@ -216,13 +323,14 @@
         descEl.style.display = "block";
       }
 
-      document.getElementById("linkPoster").href = `poster.php?code=${event.code}`;
-      document.getElementById("linkSlideshow").href = `slideshow.php?code=${event.code}`;
+      const pinParam = encodeURIComponent(getEventPin());
+      document.getElementById("linkPoster").href = `poster.php?code=${event.code}&pin=${pinParam}`;
+      document.getElementById("linkSlideshow").href = `slideshow.php?code=${event.code}&pin=${pinParam}`;
     }
 
     function setFilter(filter) {
       currentFilter = filter;
-      document.querySelectorAll(".tab-btn").forEach(btn => {
+      document.querySelectorAll(".filter-btn").forEach(btn => {
         btn.classList.toggle("active", btn.dataset.filter === filter);
       });
       renderGallery();
@@ -281,7 +389,7 @@
       } catch (err) {}
     }
 
-    // Subida de archivos
+    // Subida de Archivos con Barra de Progreso y PIN de seguridad
     document.getElementById("cameraInput").addEventListener("change", (e) => handleFilesSelected(e.target.files));
     document.getElementById("galleryInput").addEventListener("change", (e) => handleFilesSelected(e.target.files));
 
@@ -302,7 +410,7 @@
 
       for (let i = 0; i < totalFiles; i++) {
         const file = fileList[i];
-        progressStatus.textContent = `Subiendo recuerdo ${i + 1} de ${totalFiles}... (${file.name})`;
+        progressStatus.textContent = `Subiendo momento ${i + 1} de ${totalFiles}... (${file.name})`;
 
         try {
           await uploadSingleFile(file, uploader, (percent) => {
@@ -316,11 +424,11 @@
         }
       }
 
-      progressStatus.textContent = "¡Recuerdos subidos con éxito! 🎉";
+      progressStatus.textContent = "¡Momento compartido con éxito! 🎉✨";
       setTimeout(() => {
         progressCard.style.display = "none";
         progressBar.style.width = "0%";
-      }, 2500);
+      }, 2200);
 
       document.getElementById("cameraInput").value = "";
       document.getElementById("galleryInput").value = "";
@@ -332,6 +440,7 @@
         const formData = new FormData();
         formData.append("file", file);
         formData.append("code", eventCode);
+        formData.append("pin", getEventPin());
         formData.append("uploader_name", uploader);
 
         const xhr = new XMLHttpRequest();
@@ -355,12 +464,12 @@
           }
         };
 
-        xhr.onerror = () => reject(new Error("Error de red"));
+        xhr.onerror = () => reject(new Error("Error de conexión"));
         xhr.send(formData);
       });
     }
 
-    // Lightbox
+    // Lightbox Visor
     function openLightbox(index) {
       let filtered = currentMediaList;
       if (currentFilter === "image") filtered = currentMediaList.filter(m => m.file_type === "image");
@@ -376,11 +485,11 @@
       const downloadLink = document.getElementById("lightboxDownloadBtn");
 
       if (media.file_type === "video") {
-        container.innerHTML = `<video class="lightbox-media" controls autoplay playsinline style="max-height:75vh; width:100%;">
+        container.innerHTML = `<video class="lightbox-media" controls autoplay playsinline style="max-height:74vh; width:100%;">
           <source src="${media.file_url}" type="video/mp4">
         </video>`;
       } else {
-        container.innerHTML = `<img src="${media.file_url}" class="lightbox-media" alt="Foto ampliada">`;
+        container.innerHTML = `<img src="${media.file_url}" class="lightbox-media" alt="Foto">`;
       }
 
       uploaderSpan.textContent = `Foto de: ${media.uploader_name} (${formatTimeAgo(media.created_at)})`;
@@ -410,8 +519,11 @@
     }
 
     async function downloadAllZip() {
-      const pin = prompt("Ingresa el PIN de anfitrión para descargar todo el álbum en ZIP:");
-      if (pin === null) return;
+      let pin = getEventPin();
+      if (!pin) {
+        pin = prompt("Ingresa el PIN de anfitrión para descargar todo el álbum en ZIP:");
+      }
+      if (!pin) return;
       window.open(`api.php?action=download_zip&code=${encodeURIComponent(eventCode)}&pin=${encodeURIComponent(pin)}`, "_blank");
     }
 
@@ -463,7 +575,6 @@
 
     updateGuestBadge();
     loadEventData();
-    // Actualización automática cada 8s
     setInterval(loadEventData, 8000);
   </script>
 </body>

@@ -39,12 +39,21 @@ def test_full_flow():
     print("   -> Archivo QR PNG generado exitosamente en disco.")
 
     # 3. Consultar detalles del evento
-    res = client.get(f"/api/events/{event_code}")
+    # Sin PIN: debe estar bloqueado
+    res_locked = client.get(f"/api/events/{event_code}")
+    assert res_locked.status_code == 200
+    assert res_locked.json()["locked"] is True
+    assert len(res_locked.json()["media"]) == 0
+    print("   -> Evento protegido correctamente: sin PIN esta bloqueado.")
+
+    # Con PIN correcto: debe estar desbloqueado
+    res = client.get(f"/api/events/{event_code}?pin=5678")
     assert res.status_code == 200
     details = res.json()
+    assert details["locked"] is False
     assert details["event"]["title"] == "Boda de Sofía & Carlos"
     assert len(details["media"]) == 0
-    print("   -> Consulta de evento OK (0 recuerdos iniciales).")
+    print("   -> Consulta con PIN correcto OK: evento desbloqueado.")
 
     # 4. Simular subida de una foto tomada por un invitado
     print("2. Probando subida de foto de un invitado...")
@@ -53,9 +62,19 @@ def test_full_flow():
     img.save(img_byte_arr, format="JPEG")
     img_bytes = img_byte_arr.getvalue()
 
+    # Intento de subida sin PIN -> Debe dar 403
+    bad_upload = client.post(
+        f"/api/events/{event_code}/upload",
+        data={"pin": "wrong", "uploader_name": "Intruso"},
+        files={"file": ("foto_novios.jpg", img_bytes, "image/jpeg")}
+    )
+    assert bad_upload.status_code == 403, "Subida sin PIN valido debe ser rechazada"
+    print("   -> Subida no autorizada rechazada correctamente con 403.")
+
+    # Subida con PIN valido
     upload_res = client.post(
         f"/api/events/{event_code}/upload",
-        data={"uploader_name": "Tía Carmen", "caption": "¡Vivan los novios!"},
+        data={"pin": "5678", "uploader_name": "Tía Carmen", "caption": "¡Vivan los novios!"},
         files={"file": ("foto_novios.jpg", img_bytes, "image/jpeg")}
     )
     assert upload_res.status_code == 200, f"Error al subir foto: {upload_res.text}"

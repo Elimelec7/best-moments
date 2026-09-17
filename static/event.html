@@ -26,86 +26,113 @@
       </div>
     </header>
 
-    <!-- Banner Central del Evento -->
-    <section class="glass-card" style="text-align: center; padding: 26px 18px; margin-bottom: 22px;">
-      <span class="hero-pill" id="eventPillBadge">🎉 Celebración en Vivo</span>
-      <h1 class="card-title" id="eventTitleText" style="font-size: 2rem; justify-content: center; margin-bottom: 8px;">
-        Cargando evento...
-      </h1>
-      <div style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; color: #94a3b8; font-size: 0.9rem; margin-bottom: 12px;">
-        <span id="eventDateText"></span>
-        <span id="eventLocationText"></span>
-      </div>
-      <p id="eventDescriptionText" style="display: none; color: #cbd5e1; font-size: 0.98rem; max-width: 620px; margin: 0 auto 16px; line-height: 1.5;"></p>
-      
-      <!-- Enlaces Rápidos del Anfitrión -->
-      <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-top: 14px;">
-        <a id="linkPoster" href="#" target="_blank" class="btn btn-secondary" style="padding: 8px 14px; font-size: 0.82rem;">
-          🖨️ Cartel QR Mesas
-        </a>
-        <a id="linkSlideshow" href="#" target="_blank" class="btn btn-secondary" style="padding: 8px 14px; font-size: 0.82rem;">
-          📺 Pantalla / TV en Vivo
-        </a>
-        <button onclick="downloadAllZip()" class="btn btn-outline" style="padding: 8px 14px; font-size: 0.82rem;">
-          📦 Descargar Todo (ZIP)
-        </button>
-      </div>
-    </section>
-
-    <!-- Botones de Acción Gráficos Gigantes (Cámara y Galería) -->
-    <div class="action-cards-grid">
-      <!-- Botón 1: Cámara en Vivo -->
-      <label for="cameraInput" class="action-card action-camera">
-        <span class="card-icon">📸</span>
-        <span class="card-main-text">Tomar Foto / Video</span>
-        <span class="card-sub-text">Abre la cámara al instante</span>
-      </label>
-      <input type="file" id="cameraInput" accept="image/*,video/*" capture="environment" style="display: none;">
-
-      <!-- Botón 2: Galería del Celular -->
-      <label for="galleryInput" class="action-card action-gallery">
-        <span class="card-icon">🖼️</span>
-        <span class="card-main-text">Subir de Galería</span>
-        <span class="card-sub-text">Selecciona varias fotos</span>
-      </label>
-      <input type="file" id="galleryInput" accept="image/*,video/*" multiple style="display: none;">
-    </div>
-
-    <!-- Barra de Progreso Dinámica durante la subida -->
-    <div class="upload-progress-container" id="uploadProgressCard">
-      <div style="display: flex; justify-content: space-between; font-weight: 700; font-size: 0.95rem;">
-        <span id="uploadProgressStatus">Subiendo recuerdo...</span>
-        <span id="uploadProgressPercent" style="color: var(--primary);">0%</span>
-      </div>
-      <div class="progress-bar-outer">
-        <div class="progress-bar-inner" id="uploadProgressBar"></div>
-      </div>
-    </div>
-
-    <!-- Barra de Filtros y Contador de Recuerdos -->
-    <div class="stats-bar">
-      <div class="filter-pills">
-        <button class="filter-btn active" data-filter="all" onclick="setFilter('all')">Todos</button>
-        <button class="filter-btn" data-filter="image" onclick="setFilter('image')">Fotos</button>
-        <button class="filter-btn" data-filter="video" onclick="setFilter('video')">Videos</button>
-      </div>
-      <div id="mediaCountText" style="font-size: 0.88rem; color: #cbd5e1; font-weight: 700;">
-        0 recuerdos compartidos
-      </div>
-    </div>
-
-    <!-- Cuadrícula Dinámica de la Galería -->
-    <div class="gallery-grid" id="galleryGrid"></div>
-
-    <!-- Estado Vacío Invitador -->
-    <div class="glass-card" id="emptyGalleryState" style="display: none; text-align: center; padding: 48px 20px;">
-      <div style="font-size: 3.5rem; margin-bottom: 12px;">📷 ✨</div>
-      <h3 style="font-size: 1.3rem; color: #fff; font-weight: 800; margin-bottom: 8px;">
-        ¡Sé el primero en compartir un momento!
-      </h3>
-      <p style="color: #94a3b8; max-width: 480px; margin: 0 auto 20px; font-size: 0.95rem;">
-        Toca los botones superiores para activar tu cámara o subir fotos desde tu celular. ¡Todos los invitados podrán verlos en vivo!
+    <!-- Tarjeta de Bloqueo por PIN de Seguridad -->
+    <div class="glass-card" id="pinGateCard" style="display: none; text-align: center; max-width: 480px; margin: 30px auto 40px; padding: 40px 24px; border-color: var(--primary);">
+      <div style="font-size: 3.2rem; margin-bottom: 12px;">🔒</div>
+      <h2 style="font-size: 1.8rem; font-weight: 900; color: #fff; margin-bottom: 8px;">Álbum Protegido</h2>
+      <p id="pinGateTitle" style="color: var(--primary); font-size: 1.2rem; font-weight: 800; margin-bottom: 12px;"></p>
+      <p style="color: #cbd5e1; font-size: 0.95rem; margin-bottom: 24px; line-height: 1.5;">
+        Esta celebración es privada. Si estás en la fiesta, <strong>escanea el código QR</strong> de tu mesa para entrar directo, o escribe el <strong>PIN de anfitrión</strong> proporcionado.
       </p>
+      <form id="pinUnlockForm" onsubmit="handlePinSubmit(event)">
+        <div class="form-group" style="margin-bottom: 16px;">
+          <input type="password" id="inputPinUnlock" class="form-input" placeholder="PIN de 4 dígitos" maxlength="12" style="text-align: center; font-size: 1.4rem; letter-spacing: 6px; font-weight: 800;" required autofocus>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block btn-lg" id="btnUnlockSubmit">
+          🔓 Desbloquear Álbum
+        </button>
+      </form>
+      <div id="pinErrorAlert" style="display: none; color: #f87171; font-weight: 700; margin-top: 14px; background: rgba(239, 68, 68, 0.15); padding: 10px; border-radius: 8px;">
+        ❌ PIN incorrecto. Por favor verifícalo con el anfitrión.
+      </div>
+      <div style="margin-top: 24px;">
+        <a href="/" style="color: #94a3b8; font-size: 0.88rem; text-decoration: underline;">← Volver al Inicio</a>
+      </div>
+    </div>
+
+    <!-- Contenido Protegido del Álbum (Visible solo con PIN válido o por QR) -->
+    <div id="eventMainContent" style="display: none;">
+      <!-- Banner Central del Evento -->
+      <section class="glass-card" style="text-align: center; padding: 26px 18px; margin-bottom: 22px;">
+        <span class="hero-pill" id="eventPillBadge">🎉 Celebración en Vivo</span>
+        <h1 class="card-title" id="eventTitleText" style="font-size: 2rem; justify-content: center; margin-bottom: 8px;">
+          Cargando evento...
+        </h1>
+        <div style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; color: #94a3b8; font-size: 0.9rem; margin-bottom: 12px;">
+          <span id="eventDateText"></span>
+          <span id="eventLocationText"></span>
+        </div>
+        <p id="eventDescriptionText" style="display: none; color: #cbd5e1; font-size: 0.98rem; max-width: 620px; margin: 0 auto 16px; line-height: 1.5;"></p>
+        
+        <!-- Enlaces Rápidos del Anfitrión -->
+        <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-top: 14px;">
+          <a id="linkPoster" href="#" target="_blank" class="btn btn-secondary" style="padding: 8px 14px; font-size: 0.82rem;">
+            🖨️ Cartel QR Mesas
+          </a>
+          <a id="linkSlideshow" href="#" target="_blank" class="btn btn-secondary" style="padding: 8px 14px; font-size: 0.82rem;">
+            📺 Pantalla / TV en Vivo
+          </a>
+          <button onclick="downloadAllZip()" class="btn btn-outline" style="padding: 8px 14px; font-size: 0.82rem;">
+            📦 Descargar Todo (ZIP)
+          </button>
+        </div>
+      </section>
+
+      <!-- Botones de Acción Gráficos Gigantes (Cámara y Galería) -->
+      <div class="action-cards-grid">
+        <!-- Botón 1: Cámara en Vivo -->
+        <label for="cameraInput" class="action-card action-camera">
+          <span class="card-icon">📸</span>
+          <span class="card-main-text">Tomar Foto / Video</span>
+          <span class="card-sub-text">Abre la cámara al instante</span>
+        </label>
+        <input type="file" id="cameraInput" accept="image/*,video/*" capture="environment" style="display: none;">
+
+        <!-- Botón 2: Galería del Celular -->
+        <label for="galleryInput" class="action-card action-gallery">
+          <span class="card-icon">🖼️</span>
+          <span class="card-main-text">Subir de Galería</span>
+          <span class="card-sub-text">Selecciona varias fotos</span>
+        </label>
+        <input type="file" id="galleryInput" accept="image/*,video/*" multiple style="display: none;">
+      </div>
+
+      <!-- Barra de Progreso Dinámica durante la subida -->
+      <div class="upload-progress-container" id="uploadProgressCard">
+        <div style="display: flex; justify-content: space-between; font-weight: 700; font-size: 0.95rem;">
+          <span id="uploadProgressStatus">Subiendo recuerdo...</span>
+          <span id="uploadProgressPercent" style="color: var(--primary);">0%</span>
+        </div>
+        <div class="progress-bar-outer">
+          <div class="progress-bar-inner" id="uploadProgressBar"></div>
+        </div>
+      </div>
+
+      <!-- Barra de Filtros y Contador de Recuerdos -->
+      <div class="stats-bar">
+        <div class="filter-pills">
+          <button class="filter-btn active" data-filter="all" onclick="setFilter('all')">Todos</button>
+          <button class="filter-btn" data-filter="image" onclick="setFilter('image')">Fotos</button>
+          <button class="filter-btn" data-filter="video" onclick="setFilter('video')">Videos</button>
+        </div>
+        <div id="mediaCountText" style="font-size: 0.88rem; color: #cbd5e1; font-weight: 700;">
+          0 recuerdos compartidos
+        </div>
+      </div>
+
+      <!-- Cuadrícula Dinámica de la Galería -->
+      <div class="gallery-grid" id="galleryGrid"></div>
+
+      <!-- Estado Vacío Invitador -->
+      <div class="glass-card" id="emptyGalleryState" style="display: none; text-align: center; padding: 48px 20px;">
+        <div style="font-size: 3.5rem; margin-bottom: 12px;">📷 ✨</div>
+        <h3 style="font-size: 1.3rem; color: #fff; font-weight: 800; margin-bottom: 8px;">
+          ¡Sé el primero en compartir un momento!
+        </h3>
+        <p style="color: #94a3b8; max-width: 480px; margin: 0 auto 20px; font-size: 0.95rem;">
+          Toca los botones superiores para activar tu cámara o subir fotos desde tu celular. ¡Todos los invitados podrán verlos en vivo!
+        </p>
+      </div>
     </div>
   </div>
 
@@ -135,7 +162,7 @@
   </div>
 
   <!-- Barra Flotante Inferior en Pantallas Móviles -->
-  <div class="mobile-bottom-bar">
+  <div class="mobile-bottom-bar" id="mobileBottomBar" style="display: none;">
     <label for="cameraInput" class="bottom-action-btn" style="cursor: pointer;">
       <span class="btn-icon">📸</span>
       <span>Cámara</span>

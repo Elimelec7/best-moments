@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Modo Proyector en Vivo - Moments Drive</title>
+  <title>Experience your best moments with us! - Modo Pantalla en Vivo</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background: #000;
+      background: #090d16;
       color: #fff;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       overflow: hidden;
@@ -16,6 +16,18 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      position: relative;
+    }
+    /* Fondo ambiental dinámico que replica la foto actual */
+    #ambientBackdrop {
+      position: absolute;
+      inset: -50px;
+      background-size: cover;
+      background-position: center;
+      filter: blur(50px) brightness(0.4);
+      opacity: 0.7;
+      transition: background-image 1s ease-in-out;
+      z-index: 1;
     }
     #slideshowContainer {
       position: relative;
@@ -24,97 +36,141 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      z-index: 2;
     }
     .slide-media {
-      max-width: 95vw;
-      max-height: 90vh;
+      max-width: 92vw;
+      max-height: 88vh;
       object-fit: contain;
-      border-radius: 12px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.8);
-      transition: opacity 0.8s ease-in-out;
+      border-radius: 20px;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.85), 0 0 30px rgba(255, 51, 102, 0.25);
+      transition: opacity 0.8s ease-in-out, transform 6s ease-out;
       opacity: 0;
+      transform: scale(0.98);
     }
-    .slide-media.active { opacity: 1; }
+    .slide-media.active {
+      opacity: 1;
+      transform: scale(1.02);
+    }
+    /* Tarjeta Flotante Neón en la Esquina con Código QR */
     .qr-badge-corner {
       position: fixed;
-      bottom: 24px;
-      right: 24px;
-      background: rgba(15, 23, 42, 0.88);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 16px;
-      padding: 14px 18px;
+      bottom: 26px;
+      right: 26px;
+      background: rgba(11, 15, 25, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 20px;
+      padding: 14px 20px;
       display: flex;
       align-items: center;
-      gap: 14px;
-      backdrop-filter: blur(12px);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      gap: 16px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7), 0 0 20px rgba(255, 51, 102, 0.3);
       z-index: 100;
-      animation: pulse 3s infinite;
+      animation: pulseGlow 3s infinite;
     }
     .qr-badge-corner img {
-      width: 80px;
-      height: 80px;
-      border-radius: 8px;
+      width: 86px;
+      height: 86px;
+      border-radius: 12px;
       background: #fff;
-      padding: 3px;
+      padding: 4px;
     }
-    .qr-text { text-align: left; }
-    .qr-text h4 { font-size: 0.95rem; font-weight: 700; color: #f43f5e; margin-bottom: 3px; }
-    .qr-text p { font-size: 0.8rem; color: #cbd5e1; }
+    .qr-text h4 {
+      font-size: 1.05rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #ff3366, #ff80bf);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 4px;
+    }
+    .qr-text p {
+      font-size: 0.82rem;
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+    /* Pie de Foto del Fotógrafo */
     .slide-caption-bar {
       position: fixed;
-      bottom: 24px;
-      left: 24px;
-      background: rgba(0, 0, 0, 0.7);
-      border-radius: 24px;
-      padding: 8px 20px;
-      font-size: 1rem;
-      color: #e2e8f0;
-      backdrop-filter: blur(8px);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      z-index: 100;
-    }
-    .event-top-bar {
-      position: fixed;
-      top: 20px;
-      left: 24px;
-      font-size: 1.2rem;
+      bottom: 26px;
+      left: 26px;
+      background: rgba(11, 15, 25, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 30px;
+      padding: 10px 24px;
+      font-size: 1.05rem;
       font-weight: 700;
       color: #fff;
-      text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
       z-index: 100;
+    }
+    /* Encabezado Superior de la Celebración */
+    .event-top-bar {
+      position: fixed;
+      top: 22px;
+      left: 26px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(11, 15, 25, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 8px 18px;
+      border-radius: 30px;
+      backdrop-filter: blur(10px);
+      z-index: 100;
+    }
+    .event-top-title {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #fff;
     }
     .controls-top-right {
       position: fixed;
-      top: 20px;
-      right: 24px;
+      top: 22px;
+      right: 26px;
       display: flex;
       gap: 10px;
       z-index: 100;
     }
     .btn-ctrl {
-      background: rgba(255,255,255,0.15);
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       color: #fff;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 8px;
+      padding: 8px 16px;
+      border-radius: 12px;
       cursor: pointer;
-      backdrop-filter: blur(6px);
-      font-size: 0.85rem;
+      backdrop-filter: blur(8px);
+      font-size: 0.88rem;
+      font-weight: 700;
+      transition: background 0.2s;
     }
-    .btn-ctrl:hover { background: rgba(255,255,255,0.25); }
-    .empty-waiting { text-align: center; color: #94a3b8; }
-    .empty-waiting h2 { color: #fff; margin-bottom: 12px; font-size: 2rem; }
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.02); }
+    .btn-ctrl:hover { background: rgba(255, 255, 255, 0.25); }
+    .empty-waiting { text-align: center; color: #94a3b8; z-index: 2; padding: 20px; }
+    .empty-waiting h2 {
+      font-size: 2.4rem;
+      font-weight: 900;
+      margin-bottom: 14px;
+      background: linear-gradient(135deg, #fff, #ffd1dc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7), 0 0 15px rgba(255, 51, 102, 0.3); }
+      50% { box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7), 0 0 30px rgba(139, 92, 246, 0.55); }
     }
   </style>
 </head>
 <body>
-  <div class="event-top-bar" id="eventTitle">Moments Drive - Modo Pantalla</div>
+  <div id="ambientBackdrop"></div>
+
+  <div class="event-top-bar">
+    <span style="font-size: 1.3rem;">✨</span>
+    <span class="event-top-title" id="eventTitle">Experience your best moments with us!</span>
+  </div>
   
   <div class="controls-top-right">
     <button class="btn-ctrl" onclick="toggleFullscreen()">⛶ Pantalla Completa</button>
@@ -123,21 +179,26 @@
 
   <div id="slideshowContainer">
     <div class="empty-waiting" id="waitingState">
-      <h2>🎉 ¡Esperando fotos de los invitados!</h2>
-      <p style="font-size: 1.1rem; margin-bottom: 24px;">Apunta tu cámara al código QR y sé el primero en salir en la pantalla.</p>
+      <div style="font-size: 3.8rem; margin-bottom: 12px;">🎉 📸</div>
+      <h2>¡Esperando los mejores momentos!</h2>
+      <p style="font-size: 1.2rem; color: #cbd5e1; max-width: 580px; margin: 0 auto;">
+        Apunta tu celular al código QR en pantalla y sé el primero en salir en la fiesta.
+      </p>
     </div>
   </div>
 
+  <!-- Pie con autor del recuerdo -->
   <div class="slide-caption-bar" id="captionBar" style="display: none;">
     <span>📸</span>
-    <span id="uploaderText">Recuerdo</span>
+    <span id="uploaderText">Recuerdo de la fiesta</span>
   </div>
 
+  <!-- Código QR en la Esquina -->
   <div class="qr-badge-corner" id="qrCornerBadge">
     <img id="qrCornerImg" src="" alt="QR">
     <div class="qr-text">
-      <h4>¡Sube tus fotos aquí!</h4>
-      <p>Apunta tu celular al QR</p>
+      <h4>¡Sube tu foto ahora!</h4>
+      <p>Apunta tu cámara aquí 📲</p>
     </div>
   </div>
 
@@ -148,7 +209,7 @@
     let currentIndex = -1;
     let timer = null;
     let isPaused = false;
-    const SLIDE_INTERVAL = 6000;
+    const SLIDE_INTERVAL = 6000; // 6 segundos
 
     async function loadData() {
       if (!eventCode) return;
@@ -180,13 +241,18 @@
 
       const media = mediaList[currentIndex];
       const container = document.getElementById("slideshowContainer");
+      const backdrop = document.getElementById("ambientBackdrop");
       const waiting = document.getElementById("waitingState");
       const captionBar = document.getElementById("captionBar");
       const uploaderText = document.getElementById("uploaderText");
 
       if (waiting) waiting.style.display = "none";
       if (captionBar) captionBar.style.display = "flex";
-      if (uploaderText) uploaderText.textContent = `Compartido por: ${media.uploader_name} ❤️ ${media.likes_count}`;
+      if (uploaderText) uploaderText.innerHTML = `Compartido por: <strong>${escapeHtml(media.uploader_name)}</strong> &nbsp;•&nbsp; ❤️ ${media.likes_count}`;
+
+      if (media.file_type === "image") {
+        backdrop.style.backgroundImage = `url('${media.file_url}')`;
+      }
 
       let mediaHtml = "";
       if (media.file_type === "video") {
@@ -216,6 +282,13 @@
       } else {
         document.exitFullscreen().catch(() => {});
       }
+    }
+
+    function escapeHtml(text) {
+      if (!text) return "";
+      const div = document.createElement("div");
+      div.innerText = text;
+      return div.innerHTML;
     }
 
     loadData().then(() => {

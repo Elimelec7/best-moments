@@ -1,8 +1,8 @@
 /**
- * Moments Drive - Lógica Frontend
+ * Experience your best moments with us! - Lógica Frontend
  */
 
-// Utilidad para obtener el nombre del invitado
+// Utilidad para obtener y guardar el nombre del invitado
 function getGuestName() {
   return localStorage.getItem("moments_guest_name") || "";
 }
@@ -16,7 +16,7 @@ function setGuestName(name) {
 function promptGuestName(force = false) {
   let current = getGuestName();
   if (!current || force) {
-    const entered = prompt("¿Cuál es tu nombre? (Para que sepan quién tomó la foto):", current || "");
+    const entered = prompt("¿Cuál es tu nombre? (Para que aparezca en tus fotos):", current || "");
     if (entered && entered.trim()) {
       setGuestName(entered);
       updateGuestBadge();
@@ -29,14 +29,26 @@ function promptGuestName(force = false) {
 function updateGuestBadge() {
   const badge = document.getElementById("guestNameDisplay");
   if (badge) {
-    const name = getGuestName() || "Invitado (Clic para cambiar)";
-    badge.textContent = name;
+    badge.textContent = getGuestName() || "Mi Nombre";
   }
 }
 
+// Utilidades para PIN de evento
+function getEventPin(code) {
+  const c = code || currentEventCode;
+  return localStorage.getItem("moments_pin_" + c) || "";
+}
+
+function setEventPin(pin, code) {
+  const c = code || currentEventCode;
+  if (pin) localStorage.setItem("moments_pin_" + c, pin.trim());
+}
+
 // ==========================================
-// PÁGINA PRINCIPAL: CREAR EVENTO
+// PÁGINA PRINCIPAL: CREAR EVENTO Y SEGURIDAD
 // ==========================================
+
+let selectedEventCode = "";
 
 function initHomePage() {
   const form = document.getElementById("createEventForm");
@@ -50,12 +62,14 @@ function initHomePage() {
       submitBtn.disabled = true;
       submitBtn.textContent = "Creando evento y generando QR...";
 
+      const adminPin = document.getElementById("eventPin").value || "1234";
+
       const payload = {
         title: document.getElementById("eventTitle").value,
         event_date: document.getElementById("eventDate").value,
         location: document.getElementById("eventLocation").value,
         description: document.getElementById("eventDescription").value,
-        admin_pin: document.getElementById("eventPin").value || "1234",
+        admin_pin: adminPin,
         custom_code: document.getElementById("eventCustomCode").value,
         theme: document.getElementById("eventTheme").value
       };
@@ -72,64 +86,131 @@ function initHomePage() {
           form.style.display = "none";
           resultCard.style.display = "block";
           
+          setEventPin(adminPin, data.event.code);
+
           document.getElementById("createdEventTitle").textContent = data.event.title;
           document.getElementById("createdEventQrImg").src = data.qr_url;
           document.getElementById("createdEventUrlInput").value = data.target_url;
           
-          document.getElementById("btnOpenEvent").href = `/e/${data.event.code}`;
+          document.getElementById("btnOpenEvent").href = `/e/${data.event.code}?pin=${encodeURIComponent(adminPin)}`;
           document.getElementById("btnPrintPoster").href = `/e/${data.event.code}/poster`;
           document.getElementById("btnOpenSlideshow").href = `/e/${data.event.code}/slideshow`;
 
           resultCard.scrollIntoView({ behavior: "smooth" });
+          loadRecentEvents();
         } else {
           alert(data.detail || "Error al crear el evento.");
           submitBtn.disabled = false;
-          submitBtn.textContent = "✨ Crear Evento y Generar QR";
+          submitBtn.textContent = "🚀 ¡Crear Evento y Obtener Código QR!";
         }
       } catch (err) {
         alert("Error de conexión al crear el evento.");
         submitBtn.disabled = false;
-        submitBtn.textContent = "✨ Crear Evento y Generar QR";
+        submitBtn.textContent = "🚀 ¡Crear Evento y Obtener Código QR!";
       }
     });
   }
 
-  // Cargar eventos recientes
-  if (recentEventsContainer) {
-    fetch("/api/events")
-      .then(res => res.json())
-      .then(data => {
-        if (data.events && data.events.length > 0) {
-          recentEventsContainer.innerHTML = data.events.map(ev => `
-            <a href="/e/${ev.code}" class="card" style="display:block; padding:16px; margin-bottom:12px;">
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <div>
-                  <h3 style="font-size:1.1rem; color:#fff; margin-bottom:4px;">${escapeHtml(ev.title)}</h3>
-                  <div style="color:#94a3b8; font-size:0.85rem;">
-                    📅 ${ev.event_date || 'Sin fecha'} &nbsp;•&nbsp; 📸 ${ev.media_count} recuerdos
-                  </div>
+  loadRecentEvents();
+}
+
+function loadRecentEvents() {
+  const container = document.getElementById("recentEventsList");
+  if (!container) return;
+
+  fetch("/api/events")
+    .then(res => res.json())
+    .then(data => {
+      if (data.events && data.events.length > 0) {
+        container.innerHTML = data.events.map(ev => `
+          <div onclick="openProtectedEvent('${ev.code}', '${escapeHtml(ev.title)}')" class="glass-card" style="display:block; padding:18px; margin-bottom:12px; cursor:pointer;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <h3 style="font-size:1.15rem; color:#fff; font-weight:800; margin-bottom:4px;">
+                  🔒 ${escapeHtml(ev.title)}
+                </h3>
+                <div style="color:#94a3b8; font-size:0.86rem; display:flex; gap:12px; align-items:center;">
+                  <span>📅 ${ev.event_date || 'Sin fecha'}</span>
+                  <span>📸 <strong>${ev.media_count}</strong> recuerdos</span>
                 </div>
-                <span style="color:var(--primary); font-weight:700;">Entrar →</span>
               </div>
-            </a>
-          `).join("");
-        } else {
-          recentEventsContainer.innerHTML = `<p style="color:#94a3b8; text-align:center;">Aún no hay eventos creados. ¡Crea el primero arriba!</p>`;
-        }
-      })
-      .catch(() => {
-        recentEventsContainer.innerHTML = `<p style="color:#94a3b8; text-align:center;">No se pudieron cargar eventos recientes.</p>`;
-      });
+              <span style="color:var(--primary); font-weight:800; font-size:0.95rem; background:rgba(255,51,102,0.12); padding:6px 14px; border-radius:12px; border:1px solid rgba(255,51,102,0.3);">
+                Ingresar con PIN →
+              </span>
+            </div>
+          </div>
+        `).join("");
+      } else {
+        container.innerHTML = `<p style="color:#94a3b8; text-align:center; padding:20px;">Aún no hay eventos creados. ¡Crea el primero arriba!</p>`;
+      }
+    })
+    .catch(() => {
+      container.innerHTML = `<p style="color:#94a3b8; text-align:center;">No se pudieron cargar los eventos.</p>`;
+    });
+}
+
+function openProtectedEvent(code, title) {
+  const savedPin = getEventPin(code);
+  if (savedPin) {
+    window.location.href = `/e/${encodeURIComponent(code)}?pin=${encodeURIComponent(savedPin)}`;
+    return;
+  }
+  selectedEventCode = code;
+  const overlay = document.getElementById("pinModalOverlay");
+  if (overlay) {
+    document.getElementById("modalEventTitle").textContent = title;
+    document.getElementById("modalPinInput").value = "";
+    document.getElementById("modalPinError").style.display = "none";
+    overlay.classList.add("active");
+    setTimeout(() => document.getElementById("modalPinInput").focus(), 100);
+  } else {
+    // Si no hay modal, ir directo y la página del evento mostrará el pin gate
+    window.location.href = `/e/${encodeURIComponent(code)}`;
   }
 }
 
-// Copiar URL al portapapeles
+function closePinModal() {
+  const overlay = document.getElementById("pinModalOverlay");
+  if (overlay) overlay.classList.remove("active");
+}
+
+async function submitModalPin(e) {
+  e.preventDefault();
+  const pin = document.getElementById("modalPinInput").value.trim();
+  const btn = document.getElementById("btnModalSubmit");
+  btn.disabled = true;
+  btn.textContent = "Verificando...";
+
+  try {
+    const res = await fetch(`/api/events/${encodeURIComponent(selectedEventCode)}/verify-pin`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pin: pin })
+    });
+    const data = await res.json();
+    btn.disabled = false;
+    btn.textContent = "Entrar";
+
+    if (data.valid) {
+      setEventPin(pin, selectedEventCode);
+      window.location.href = `/e/${encodeURIComponent(selectedEventCode)}?pin=${encodeURIComponent(pin)}`;
+    } else {
+      document.getElementById("modalPinError").style.display = "block";
+      document.getElementById("modalPinInput").select();
+    }
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = "Entrar";
+    alert("Error al verificar el PIN.");
+  }
+}
+
 function copyEventUrl() {
   const input = document.getElementById("createdEventUrlInput");
   if (input) {
     input.select();
     navigator.clipboard.writeText(input.value);
-    alert("¡Enlace copiado al portapapeles!");
+    alert("✨ ¡Enlace copiado al portapapeles!");
   }
 }
 
@@ -155,6 +236,13 @@ async function initEventPage() {
     return;
   }
 
+  // Si viene con el parámetro pin en la URL (al escanear QR)
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlPin = urlParams.get("pin");
+  if (urlPin) {
+    setEventPin(urlPin);
+  }
+
   updateGuestBadge();
 
   // Escuchar inputs de archivos
@@ -177,17 +265,39 @@ async function initEventPage() {
 }
 
 async function loadEventData() {
+  const pin = getEventPin();
+
   try {
-    const res = await fetch(`/api/events/${currentEventCode}`);
+    const res = await fetch(`/api/events/${currentEventCode}?pin=${encodeURIComponent(pin)}`);
     if (!res.ok) {
-      document.body.innerHTML = `<div class="container" style="text-align:center; padding:50px 20px;">
-        <h2>Evento no encontrado</h2>
-        <p style="color:#94a3b8; margin:16px 0;">El enlace o código QR no corresponde a un evento activo.</p>
+      document.body.innerHTML = `<div class="container" style="text-align:center; padding:60px 20px;">
+        <h2 style="font-size:2rem; margin-bottom:12px;">Evento no encontrado</h2>
+        <p style="color:#94a3b8; margin-bottom:20px;">El enlace o código QR no corresponde a un evento activo.</p>
         <a href="/" class="btn btn-primary">Volver al Inicio</a>
       </div>`;
       return;
     }
     const data = await res.json();
+
+    const gate = document.getElementById("pinGateCard");
+    const main = document.getElementById("eventMainContent");
+    const btm = document.getElementById("mobileBottomBar");
+
+    // Si el evento está bloqueado por PIN
+    if (data.locked) {
+      if (gate) gate.style.display = "block";
+      if (main) main.style.display = "none";
+      if (btm) btm.style.display = "none";
+      const gateTitle = document.getElementById("pinGateTitle");
+      if (gateTitle && data.event) gateTitle.textContent = data.event.title;
+      return;
+    }
+
+    // Desbloqueado
+    if (gate) gate.style.display = "none";
+    if (main) main.style.display = "block";
+    if (btm) btm.style.display = "flex";
+
     renderEventHeader(data.event);
     currentMediaList = data.media || [];
     renderGallery();
@@ -196,20 +306,56 @@ async function loadEventData() {
   }
 }
 
-async function loadEventDataSilently() {
+async function handlePinSubmit(e) {
+  e.preventDefault();
+  const inputPin = document.getElementById("inputPinUnlock").value.trim();
+  const btn = document.getElementById("btnUnlockSubmit");
+  btn.disabled = true;
+  btn.textContent = "Verificando PIN...";
+
+  setEventPin(inputPin);
+
   try {
-    const res = await fetch(`/api/events/${currentEventCode}`);
+    const res = await fetch(`/api/events/${currentEventCode}?pin=${encodeURIComponent(inputPin)}`);
+    const data = await res.json();
+    btn.disabled = false;
+    btn.textContent = "🔓 Desbloquear Álbum";
+
+    if (data.locked) {
+      document.getElementById("pinErrorAlert").style.display = "block";
+      document.getElementById("inputPinUnlock").select();
+    } else {
+      document.getElementById("pinErrorAlert").style.display = "none";
+      document.getElementById("pinGateCard").style.display = "none";
+      document.getElementById("eventMainContent").style.display = "block";
+      const btm = document.getElementById("mobileBottomBar");
+      if (btm) btm.style.display = "flex";
+
+      renderEventHeader(data.event);
+      currentMediaList = data.media || [];
+      renderGallery();
+    }
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = "🔓 Desbloquear Álbum";
+    alert("Error de conexión al verificar el PIN.");
+  }
+}
+
+async function loadEventDataSilently() {
+  const pin = getEventPin();
+  if (!pin) return; // Si no hay PIN, no sondear
+
+  try {
+    const res = await fetch(`/api/events/${currentEventCode}?pin=${encodeURIComponent(pin)}`);
     if (res.ok) {
       const data = await res.json();
-      // Solo actualizar si hay cambios en la cantidad de medios o likes
-      if (JSON.stringify(data.media) !== JSON.stringify(currentMediaList)) {
+      if (!data.locked && JSON.stringify(data.media) !== JSON.stringify(currentMediaList)) {
         currentMediaList = data.media || [];
         renderGallery();
       }
     }
-  } catch (err) {
-    // Silencioso
-  }
+  } catch (err) {}
 }
 
 function renderEventHeader(event) {
@@ -228,13 +374,14 @@ function renderEventHeader(event) {
     descEl.style.display = "block";
   }
 
-  if (posterLink) posterLink.href = `/e/${event.code}/poster`;
-  if (slideshowLink) slideshowLink.href = `/e/${event.code}/slideshow`;
+  const pinParam = encodeURIComponent(getEventPin());
+  if (posterLink) posterLink.href = `/e/${event.code}/poster?pin=${pinParam}`;
+  if (slideshowLink) slideshowLink.href = `/e/${event.code}/slideshow?pin=${pinParam}`;
 }
 
 function setFilter(filter) {
   currentFilter = filter;
-  document.querySelectorAll(".tab-btn").forEach(btn => {
+  document.querySelectorAll(".filter-btn").forEach(btn => {
     btn.classList.toggle("active", btn.dataset.filter === filter);
   });
   renderGallery();
@@ -305,11 +452,10 @@ async function handleLike(mediaId) {
   }
 }
 
-// Subida de archivos con barra de progreso
+// Subida de archivos con barra de progreso y PIN de seguridad
 async function handleFilesSelected(fileList) {
   if (!fileList || fileList.length === 0) return;
 
-  // Asegurar que el invitado tenga un nombre
   let uploader = getGuestName();
   if (!uploader) {
     uploader = promptGuestName(true);
@@ -328,12 +474,11 @@ async function handleFilesSelected(fileList) {
   for (let i = 0; i < totalFiles; i++) {
     const file = fileList[i];
     if (progressStatus) {
-      progressStatus.textContent = `Subiendo recuerdo ${i + 1} de ${totalFiles}... (${file.name})`;
+      progressStatus.textContent = `Subiendo momento ${i + 1} de ${totalFiles}... (${file.name})`;
     }
 
     try {
       await uploadSingleFile(file, uploader, (percent) => {
-        // Progreso global ponderado
         const overall = Math.round(((completedFiles + (percent / 100)) / totalFiles) * 100);
         if (progressBar) progressBar.style.width = `${overall}%`;
         if (progressPercent) progressPercent.textContent = `${overall}%`;
@@ -344,19 +489,17 @@ async function handleFilesSelected(fileList) {
     }
   }
 
-  if (progressStatus) progressStatus.textContent = "¡Todos los recuerdos se subieron con éxito! 🎉";
+  if (progressStatus) progressStatus.textContent = "¡Momento compartido con éxito! 🎉✨";
   setTimeout(() => {
     if (progressCard) progressCard.style.display = "none";
     if (progressBar) progressBar.style.width = "0%";
-  }, 2500);
+  }, 2200);
 
-  // Limpiar inputs
   const cameraInput = document.getElementById("cameraInput");
   const galleryInput = document.getElementById("galleryInput");
   if (cameraInput) cameraInput.value = "";
   if (galleryInput) galleryInput.value = "";
 
-  // Recargar galería
   await loadEventData();
 }
 
@@ -365,6 +508,7 @@ function uploadSingleFile(file, uploader, onProgress) {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("uploader_name", uploader);
+    formData.append("pin", getEventPin());
 
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `/api/events/${currentEventCode}/upload`, true);
@@ -419,7 +563,7 @@ function openLightbox(index) {
 
   if (media.file_type === "video") {
     mediaContainer.innerHTML = `
-      <video class="lightbox-media" controls autoplay playsinline style="max-height:75vh; width:100%;">
+      <video class="lightbox-media" controls autoplay playsinline style="max-height:74vh; width:100%;">
         <source src="${media.file_url}" type="video/mp4">
         Tu navegador no soporta reproducción de video.
       </video>
@@ -444,7 +588,7 @@ function closeLightbox() {
   const modal = document.getElementById("lightboxModal");
   const mediaContainer = document.getElementById("lightboxMediaContainer");
   if (modal) modal.classList.remove("active");
-  if (mediaContainer) mediaContainer.innerHTML = ""; // Detener reproducción de videos
+  if (mediaContainer) mediaContainer.innerHTML = "";
 }
 
 function nextLightbox() {
@@ -455,7 +599,7 @@ function nextLightbox() {
   if (lightboxIndex < filtered.length - 1) {
     openLightbox(lightboxIndex + 1);
   } else {
-    openLightbox(0); // Volver al inicio
+    openLightbox(0);
   }
 }
 
@@ -473,8 +617,11 @@ function prevLightbox() {
 
 // Descarga ZIP completa para el Anfitrión
 async function downloadAllZip() {
-  const pin = prompt("Ingresa el PIN de anfitrión para descargar todo el álbum en ZIP:");
-  if (pin === null) return;
+  let pin = getEventPin();
+  if (!pin) {
+    pin = prompt("Ingresa el PIN de anfitrión para descargar todo el álbum en ZIP:");
+  }
+  if (!pin) return;
 
   const url = `/api/events/${currentEventCode}/download-zip?pin=${encodeURIComponent(pin)}`;
   window.open(url, "_blank");
@@ -508,10 +655,6 @@ async function deleteCurrentLightboxMedia() {
     alert("Error de conexión.");
   }
 }
-
-// ==========================================
-// UTILIDADES
-// ==========================================
 
 function formatTimeAgo(isoString) {
   if (!isoString) return "";

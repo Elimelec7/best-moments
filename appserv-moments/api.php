@@ -24,10 +24,10 @@ function getBaseUrl() {
     return rtrim($protocol . $host . $scriptDir, '/');
 }
 
-// 1. OBTENER LISTA DE EVENTOS
+// 1. OBTENER LISTA DE EVENTOS (Ocultando el PIN de seguridad)
 if ($action === 'get_events') {
     $stmt = $pdo->query("
-        SELECT e.*, COUNT(m.id) as media_count 
+        SELECT e.id, e.code, e.title, e.description, e.event_date, e.location, e.theme, e.created_at, COUNT(m.id) as media_count 
         FROM events e 
         LEFT JOIN media m ON e.id = m.event_id 
         GROUP BY e.id 
@@ -36,6 +36,26 @@ if ($action === 'get_events') {
     ");
     $events = $stmt->fetchAll();
     echo json_encode(['events' => $events]);
+    exit;
+}
+
+// VERIFICAR PIN DE ACCESO
+if ($action === 'verify_pin') {
+    $code = $_GET['code'] ?? $_POST['code'] ?? '';
+    $pin = trim($_GET['pin'] ?? $_POST['pin'] ?? '');
+
+    $stmt = $pdo->prepare("SELECT admin_pin FROM events WHERE code = ?");
+    $stmt->execute([$code]);
+    $ev = $stmt->fetch();
+
+    if (!$ev) {
+        http_response_code(404);
+        echo json_encode(['valid' => false, 'error' => 'Evento no encontrado']);
+        exit;
+    }
+
+    $valid = ($pin === $ev['admin_pin']);
+    echo json_encode(['valid' => $valid]);
     exit;
 }
 
@@ -78,9 +98,9 @@ if ($action === 'create_event') {
     $stmt->execute([$code, $title, $description, $event_date, $location, $admin_pin, $theme]);
     $eventId = $pdo->lastInsertId();
 
-    // URL destino del evento
+    // URL destino del evento con PIN integrado para acceso instantáneo por QR
     $baseUrl = getBaseUrl();
-    $targetUrl = $baseUrl . "/event.php?code=" . $code;
+    $targetUrl = $baseUrl . "/event.php?code=" . $code . "&pin=" . urlencode($admin_pin);
 
     // Generar y cachear imagen del Código QR
     $qrDir = __DIR__ . '/uploads/qrcodes';
@@ -116,9 +136,11 @@ if ($action === 'create_event') {
     exit;
 }
 
-// 3. OBTENER DETALLE DE EVENTO Y SUS MEDIOS
+// 3. OBTENER DETALLE DE EVENTO Y SUS MEDIOS (PROTEGIDO POR PIN)
 if ($action === 'get_event') {
     $code = $_GET['code'] ?? '';
+    $pin = trim($_GET['pin'] ?? $_POST['pin'] ?? '');
+
     $stmt = $pdo->prepare("SELECT * FROM events WHERE code = ?");
     $stmt->execute([$code]);
     $event = $stmt->fetch();
@@ -129,12 +151,8 @@ if ($action === 'get_event') {
         exit;
     }
 
-    $stmtMedia = $pdo->prepare("SELECT * FROM media WHERE event_id = ? ORDER BY created_at DESC");
-    $stmtMedia->execute([$event['id']]);
-    $media = $stmtMedia->fetchAll();
-
     $baseUrl = getBaseUrl();
-    $targetUrl = $baseUrl . "/event.php?code=" . $code;
+    $targetUrl = $baseUrl . "/event.php?code=" . $code . "&pin=" . urlencode($event['admin_pin']);
     
     // QR local o fallback
     $qrPath = __DIR__ . "/uploads/qrcodes/qr_{$code}.png";
@@ -144,10 +162,45 @@ if ($action === 'get_event') {
         $qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=" . urlencode($targetUrl);
     }
 
+    // Comprobar si el PIN ingresado es correcto
+    if ($pin !== $event['admin_pin']) {
+        echo json_encode([
+            'locked' => true,
+            'event' => [
+                'id' => $event['id'],
+                'code' => $event['code'],
+                'title' => $event['title'],
+                'event_date' => $event['event_date'],
+                'location' => $event['location'],
+                'theme' => $event['theme']
+            ],
+            'media' => [],
+            'qr_url' => $qrUrl,
+            'target_url' => $targetUrl,
+            'message' => 'Evento protegido. Ingresa el PIN para desbloquear el álbum.'
+        ]);
+        exit;
+    }
+
+    // Si el PIN coincide: entregar todos los recuerdos
+    $stmtMedia = $pdo->prepare("SELECT * FROM media WHERE event_id = ? ORDER BY created_at DESC");
+    $stmtMedia->execute([$event['id']]);
+    $media = $stmtMedia->fetchAll();
+
     $event['media_count'] = count($media);
 
     echo json_encode([
-        'event' => $event,
+        'locked' => false,
+        'event' => [
+            'id' => $event['id'],
+            'code' => $event['code'],
+            'title' => $event['title'],
+            'description' => $event['description'],
+            'event_date' => $event['event_date'],
+            'location' => $event['location'],
+            'theme' => $event['theme'],
+            'media_count' => count($media)
+        ],
         'media' => $media,
         'qr_url' => $qrUrl,
         'target_url' => $targetUrl
@@ -155,20 +208,27 @@ if ($action === 'get_event') {
     exit;
 }
 
-// 4. SUBIR FOTO O VIDEO
+// 4. SUBIR FOTO O VIDEO (VALIDA PIN)
 if ($action === 'upload') {
     $code = $_POST['code'] ?? '';
+    $pin = trim($_POST['pin'] ?? $_GET['pin'] ?? '');
     $uploader = trim($_POST['uploader_name'] ?? '');
     if (empty($uploader)) $uploader = 'Invitado especial';
     $caption = trim($_POST['caption'] ?? '');
 
-    $stmt = $pdo->prepare("SELECT id FROM events WHERE code = ?");
+    $stmt = $pdo->prepare("SELECT id, admin_pin FROM events WHERE code = ?");
     $stmt->execute([$code]);
     $event = $stmt->fetch();
 
     if (!$event) {
         http_response_code(404);
         echo json_encode(['error' => 'Evento no encontrado']);
+        exit;
+    }
+
+    if ($pin !== $event['admin_pin']) {
+        http_response_code(403);
+        echo json_encode(['error' => 'PIN de acceso incorrecto para subir fotos a este evento']);
         exit;
     }
 

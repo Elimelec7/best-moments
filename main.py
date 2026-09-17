@@ -126,13 +126,13 @@ async def create_event(
     await db.commit()
     await db.refresh(event)
 
-    # Determinar URL pública del evento para el código QR
+    # Determinar URL pública del evento para el código QR con PIN integrado
     if config.PUBLIC_URL:
-        target_url = f"{config.PUBLIC_URL}/e/{code}"
+        target_url = f"{config.PUBLIC_URL}/e/{code}?pin={admin_pin}"
     else:
         # Usar la URL base de la petición entrante
         base_url = str(request.base_url).rstrip("/")
-        target_url = f"{base_url}/e/{code}"
+        target_url = f"{base_url}/e/{code}?pin={admin_pin}"
 
     # Generar QR
     qr_url = storage.generate_event_qr(code, target_url)
@@ -146,7 +146,7 @@ async def create_event(
 
 @app.get("/api/events")
 async def list_recent_events(db: AsyncSession = Depends(get_db)):
-    """Lista los eventos disponibles ordenados por fecha."""
+    """Lista los eventos disponibles ordenados por fecha (sin exponer PIN)."""
     stmt = select(Event).order_by(Event.created_at.desc()).limit(20)
     result = await db.scalars(stmt)
     events = result.all()
@@ -158,30 +158,65 @@ async def list_recent_events(db: AsyncSession = Depends(get_db)):
 
     return {"events": data}
 
+class VerifyPinRequest(BaseModel):
+    pin: str
+
+@app.post("/api/events/{code}/verify-pin")
+async def verify_event_pin(
+    code: str,
+    req: VerifyPinRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """Verifica si un PIN coincide con el evento."""
+    event = await db.scalar(select(Event).where(Event.code == code))
+    if not event:
+        raise HTTPException(status_code=404, detail="Evento no encontrado.")
+    return {"valid": (req.pin.strip() == event.admin_pin)}
+
 @app.get("/api/events/{code}")
 async def get_event_details(
     code: str,
     request: Request,
+    pin: Optional[str] = None,
     db: AsyncSession = Depends(get_db)
 ):
-    """Obtiene los detalles del evento y todas sus fotos y videos."""
+    """Obtiene los detalles del evento y todas sus fotos y videos (requiere PIN válido)."""
     event = await db.scalar(select(Event).where(Event.code == code))
     if not event:
         raise HTTPException(status_code=404, detail="Evento no encontrado.")
 
-    stmt = select(Media).where(Media.event_id == event.id).order_by(Media.created_at.desc())
-    media_records = (await db.scalars(stmt)).all()
-
-    # URL del código QR
+    # URL del código QR con PIN
     if config.PUBLIC_URL:
-        target_url = f"{config.PUBLIC_URL}/e/{code}"
+        target_url = f"{config.PUBLIC_URL}/e/{code}?pin={event.admin_pin}"
     else:
         base_url = str(request.base_url).rstrip("/")
-        target_url = f"{base_url}/e/{code}"
+        target_url = f"{base_url}/e/{code}?pin={event.admin_pin}"
 
     qr_url = storage.generate_event_qr(code, target_url)
 
+    # Validar PIN
+    clean_pin = (pin or "").strip()
+    if clean_pin != event.admin_pin:
+        return {
+            "locked": True,
+            "event": {
+                "id": event.id,
+                "code": event.code,
+                "title": event.title,
+                "event_date": event.event_date,
+                "location": event.location,
+                "theme": event.theme
+            },
+            "qr_url": qr_url,
+            "target_url": target_url,
+            "media": []
+        }
+
+    stmt = select(Media).where(Media.event_id == event.id).order_by(Media.created_at.desc())
+    media_records = (await db.scalars(stmt)).all()
+
     return {
+        "locked": False,
         "event": event.to_dict(media_count=len(media_records)),
         "qr_url": qr_url,
         "target_url": target_url,
@@ -196,10 +231,10 @@ async def get_event_qr_image(code: str, request: Request, db: AsyncSession = Dep
         raise HTTPException(status_code=404, detail="Evento no encontrado.")
 
     if config.PUBLIC_URL:
-        target_url = f"{config.PUBLIC_URL}/e/{code}"
+        target_url = f"{config.PUBLIC_URL}/e/{code}?pin={event.admin_pin}"
     else:
         base_url = str(request.base_url).rstrip("/")
-        target_url = f"{base_url}/e/{code}"
+        target_url = f"{base_url}/e/{code}?pin={event.admin_pin}"
 
     storage.generate_event_qr(code, target_url)
     qr_path = config.QR_DIR / f"qr_{code}.png"
@@ -214,14 +249,19 @@ async def get_event_qr_image(code: str, request: Request, db: AsyncSession = Dep
 async def upload_media(
     code: str,
     file: UploadFile = File(...),
+    pin: Optional[str] = Form(None),
     uploader_name: Optional[str] = Form(None),
     caption: Optional[str] = Form(None),
     db: AsyncSession = Depends(get_db)
 ):
-    """Recibe y almacena fotos o videos subidos por los invitados."""
+    """Recibe y almacena fotos o videos subidos por los invitados (valida PIN)."""
     event = await db.scalar(select(Event).where(Event.code == code))
     if not event:
         raise HTTPException(status_code=404, detail="Evento no encontrado.")
+
+    clean_pin = (pin or "").strip()
+    if clean_pin != event.admin_pin:
+        raise HTTPException(status_code=403, detail="PIN de acceso incorrecto para subir fotos a este evento.")
 
     # Guardar y generar miniatura
     file_info = await storage.save_uploaded_media(file, code)

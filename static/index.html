@@ -92,7 +92,7 @@
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label" for="eventPin">PIN de Anfitrión (Para borrar o descargar)</label>
+            <label class="form-label" for="eventPin">PIN de Acceso / Anfitrión (Para proteger las fotos)</label>
             <input type="text" id="eventPin" class="form-input" value="1234" maxlength="8" placeholder="Ej: 1234">
           </div>
         </div>
@@ -119,7 +119,7 @@
         <img id="createdEventQrImg" src="" alt="Código QR del Evento" style="width: 230px; height: 230px; display: block; border-radius: 8px;">
       </div>
 
-      <p style="color: #cbd5e1; font-size: 0.95rem; margin-bottom: 10px;">Enlace directo para compartir por WhatsApp o redes:</p>
+      <p style="color: #cbd5e1; font-size: 0.95rem; margin-bottom: 10px;">Enlace con acceso directo para invitados (vía QR):</p>
       <div style="display: flex; gap: 8px; max-width: 520px; margin: 0 auto 26px;">
         <input type="text" id="createdEventUrlInput" class="form-input" readonly style="text-align: center; font-weight: 700; font-size: 0.92rem;">
         <button type="button" class="btn btn-secondary" onclick="copyEventUrl()">📋 Copiar</button>
@@ -138,10 +138,32 @@
       </div>
     </div>
 
-    <!-- Lista de Eventos Recientes -->
+    <!-- Modal de Seguridad PIN para acceder a un evento privado -->
+    <div class="modal-overlay" id="pinModalOverlay" onclick="closePinModal()">
+      <div class="glass-card" onclick="event.stopPropagation()" style="max-width: 440px; width: 100%; text-align: center; padding: 36px 24px; border-color: var(--primary);">
+        <div style="font-size: 2.8rem; margin-bottom: 8px;">🔒</div>
+        <h3 style="font-size: 1.4rem; font-weight: 800; color: #fff; margin-bottom: 6px;">Evento Privado</h3>
+        <p id="modalEventTitle" style="color: var(--primary); font-weight: 700; margin-bottom: 8px;"></p>
+        <p style="color: #cbd5e1; font-size: 0.9rem; margin-bottom: 20px;">
+          Ingresa el PIN de acceso o anfitrión para ver y subir fotos a este evento:
+        </p>
+        <form onsubmit="submitModalPin(event)">
+          <input type="password" id="modalPinInput" class="form-input" placeholder="Ingresa el PIN" maxlength="12" style="text-align: center; font-size: 1.3rem; letter-spacing: 5px; font-weight: 800; margin-bottom: 14px;" required autofocus>
+          <div style="display: flex; gap: 10px;">
+            <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="closePinModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary" style="flex: 1;" id="btnModalSubmit">Entrar</button>
+          </div>
+        </form>
+        <div id="modalPinError" style="display: none; color: #f87171; font-weight: 700; margin-top: 14px; font-size: 0.88rem;">
+          ❌ PIN incorrecto para este evento.
+        </div>
+      </div>
+    </div>
+
+    <!-- Lista de Eventos Recientes Protegidos con PIN -->
     <div class="glass-card">
       <h2 class="card-title" style="font-size: 1.25rem;">
-        <span>📂</span> Eventos en este Servidor
+        <span>🔒</span> Eventos en este Servidor (Protegidos con PIN)
       </h2>
       <div id="recentEventsList" style="margin-top: 16px;">
         <p style="color: #94a3b8; text-align: center;">Cargando eventos...</p>
